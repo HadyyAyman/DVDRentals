@@ -131,34 +131,45 @@ order by Year , Month
 -- tables >> customer, payment
 
 with Payment_month as (
-select concat(first_name, ' ', last_name) fullname , pay.amount as amount, pay.payment_date as date
+select cus.customer_id ,SUM(pay.amount) as total_amount
 from customer cus
 join payment pay on cus.customer_id = pay.customer_id
+	group by 1
+	order by 2 desc
+	limit 10
 )
-Select fullname , date_trunc('month', date), count(amount) count_payments,  SUM(amount) Total_Payments
-from Payment_month
-group by  fullname, 2
-order by  Total_Payments desc
-LIMIT 10
+Select concat(cus.first_name,' ',cus.last_name) CustomerName , date_trunc('month', pay.payment_date) payment_month, count(amount) count_payments,  SUM(pay.amount) Total_Payments
+from customer cus
+join payment pay using (customer_id)
+join Payment_month using (customer_id)
+group by  2, CustomerName
+order by  CustomerName asc , 2 asc 
 
 /* show the difference across the top 10 paying customers monthly payments during 2007 */
 -- tables >> customer, payment
 
 with Payment_month as (
-select concat(first_name, ' ', last_name) fullname , DATE_TRUNC('month', payment_date) as month, SUM(amount) Total_Payments
+select cus.customer_id ,SUM(pay.amount) as total_amount
 from customer cus
 join payment pay on cus.customer_id = pay.customer_id
-group by month, fullname
+	group by 1
+	order by 2 desc
+	limit 10
 )
-select fullname, Max(amount_difference) as Max_Differ
+select CustomerName , Max(amount_differnece)
 from(
-Select fullname , month , 
-Total_Payments - lag(Total_Payments) over (partition by fullname order by month) as amount_difference
-from Payment_month
-) subquery 
-group by fullname
-order by Max_Differ desc
-LIMIT 10
+select CustomerName , payment_month , Total_Payment - lag(Total_Payment) over (partition by CustomerName order by payment_month) as amount_differnece
+	from(
+Select concat(cus.first_name,' ',cus.last_name) CustomerName , date_trunc('month', pay.payment_date) payment_month ,
+Sum(pay.amount) as Total_Payment
+from customer cus
+join payment pay using (customer_id)
+join Payment_month using (customer_id)
+		group by 1, 2
+		order by 1 asc , 2 asc
+		) sub1 ) sub2
+		group by 1
+		order by 2 desc
 
 -- Second Question
 /* What is the most Film Categories rented out from the two stores? */
